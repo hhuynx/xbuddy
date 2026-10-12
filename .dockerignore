@@ -1,0 +1,13 @@
+.env
+.env.*
+.venv
+.cache
+.docker-probe
+.git
+__pycache__
+*.pyc
+.pytest_cache
+data
+artifacts
+web
+.env.docker

@@ -1,0 +1,81 @@
+name: xbuddy
+x-app: &app
+  build: .
+  restart: unless-stopped
+  environment: &app-env
+    XBUDDY_HOST: 0.0.0.0
+    XBUDDY_PORT: 8080
+    XBUDDY_DATA_DIR: /app/data
+    XBUDDY_DATABASE_URL: postgresql://xbuddy:${XBUDDY_POSTGRES_PASSWORD:?Run scripts/configure_docker.py first}@postgres:5432/xbuddy
+    XBUDDY_REDIS_URL: redis://redis:6379/0
+    XBUDDY_EMBEDDED_WORKER: "false"
+    XBUDDY_TOOL_CONCURRENCY: "2"
+    XBUDDY_ALLOWED_HOSTS: ${XBUDDY_ALLOWED_HOSTS:-localhost,127.0.0.1,testserver}
+    LLM_BASE_URL: ${LLM_BASE_URL:-}
+    LLM_MODEL: ${LLM_MODEL:-}
+    LLM_API_KEY: ${LLM_API_KEY:-}
+    LLM_ALLOW_NO_KEY: ${LLM_ALLOW_NO_KEY:-false}
+    LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:-12000}
+    LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-90}
+    LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-auto}
+    FUYAO_BASE_URL: ${FUYAO_BASE_URL:-https://fuyao.aicubes.cn}
+    FUYAO_API_KEY: ${FUYAO_API_KEY:-}
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  stop_grace_period: 30s
+services:
+  web:
+    <<: *app
+    ports:
+      - "127.0.0.1:${XBUDDY_PORT:-8080}:8080"
+    volumes:
+      - web-data:/app/data
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health',timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+  worker:
+    <<: *app
+    command: [python, -m, server.worker]
+    volumes:
+      - worker-data:/app/data
+    healthcheck:
+      test: [CMD, python, -c, "from pathlib import Path; import time; p=Path('/app/data/worker.heartbeat'); assert p.exists() and time.time()-p.stat().st_mtime<30"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: xbuddy
+      POSTGRES_USER: xbuddy
+      POSTGRES_PASSWORD: ${XBUDDY_POSTGRES_PASSWORD:?Run scripts/configure_docker.py first}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/001-vector.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U xbuddy -d xbuddy"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  web-data:
+  worker-data:
+  postgres-data:
+  redis-data:

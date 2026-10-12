@@ -1,0 +1,1 @@
+"""XBuddy Python application."""

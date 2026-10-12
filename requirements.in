@@ -1,0 +1,16 @@
+fastapi
+nicegui
+uvicorn
+pydantic>=2,<3
+httpx
+jsonschema>=4,<5
+python-dotenv
+langgraph
+langgraph-checkpoint-sqlite
+mcp
+pytest
+psycopg[binary]
+langgraph-checkpoint-postgres
+redis
+opentelemetry-sdk
+pypdf

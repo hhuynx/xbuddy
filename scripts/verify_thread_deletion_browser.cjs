@@ -1,0 +1,68 @@
+/* Isolated UI checks: synthetic conversations, no external model or financial calls. */
+const {chromium}=require(process.env.XBUDDY_PLAYWRIGHT_CORE || 'playwright-core');
+const fs=require('node:fs'),path=require('node:path');
+const base=process.env.XBUDDY_QA_BASE_URL || 'http://127.0.0.1:8111';
+const output=path.resolve(__dirname,'../output/playwright');
+fs.mkdirSync(output,{recursive:true});
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});
+ const context=await browser.newContext({viewport:{width:1440,height:1000}});
+ const page=await context.newPage(),errors=[],checks={};
+ page.on('pageerror',e=>errors.push(e.message));
+ const check=(ok,name)=>{if(!ok)throw Error(name);checks[name]='passed';console.log(name);};
+ const connected=()=>page.locator('.sync-badge').filter({hasText:'实时同步'}).waitFor();
+ const selected=()=>page.evaluate(()=>JSON.parse(sessionStorage.getItem('xbuddy.workbench')||'{}'));
+ try{
+  await page.goto(base);await connected();
+  const csrf=(await (await context.request.get(base+'/api/session')).json()).csrf_token;
+  const seed=await (await context.request.post(base+'/_qa/history?pairs=2',{data:{},headers:{'X-CSRF-Token':csrf}})).json();
+  const other=await (await context.request.post(base+'/api/threads',{data:{title:'保留的对话',goal:''},headers:{'X-CSRF-Token':csrf}})).json();
+  await page.evaluate(s=>sessionStorage.setItem('xbuddy.workbench',JSON.stringify({thread:s.thread,run:s.run,view:'对话'})),seed);
+  await page.reload();await connected();
+  await page.locator('.thread-item').filter({hasText:'保留的对话'}).waitFor();
+  const active=page.locator('.thread-item.active');
+  check((await selected()).thread===seed.thread,'seeded_conversation_selected');
+  check(await active.locator('.thread-open').count()===1 && await active.getByRole('button',{name:'删除对话',exact:true}).count()===1,'title_and_delete_only');
+  check(!/已完成|次运行|\d{2}-\d{2} \d{2}:\d{2}/.test(await page.locator('.thread-list').innerText()),'sidebar_metadata_removed');
+  check((await active.boundingBox()).height<60,'compact_conversation_row');
+  await page.screenshot({path:path.join(output,'thread-list-clean.png')});
+  await active.getByRole('button',{name:'删除对话',exact:true}).click();
+  const dialog=page.getByRole('dialog');await dialog.waitFor();
+  check((await selected()).thread===seed.thread,'delete_button_does_not_switch_conversation');
+  await dialog.getByRole('button',{name:'取消',exact:true}).click();
+  await dialog.waitFor({state:'hidden'});
+  check((await (await context.request.get(base+'/api/threads')).json()).threads.some(t=>t.id===seed.thread),'cancel_keeps_conversation');
+  const preserved=page.locator('.thread-item').filter({hasText:'保留的对话'});
+  await preserved.getByRole('button',{name:'删除对话',exact:true}).click();
+  await dialog.getByRole('button',{name:'确认删除',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await preserved.waitFor({state:'hidden'});
+  check((await selected()).thread===seed.thread,'deleting_other_conversation_preserves_selection');
+  check((await context.request.get(base+'/api/threads/'+other.id)).status()===404,'deleted_conversation_inaccessible');
+  const fallback=await (await context.request.post(base+'/api/threads',{data:{title:'删除后的接续对话',goal:''},headers:{'X-CSRF-Token':csrf}})).json();
+  await page.locator('.thread-item.active').getByRole('button',{name:'删除对话',exact:true}).click();
+  await dialog.getByRole('button',{name:'确认删除',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await page.locator('.thread-item.active').filter({hasText:'删除后的接续对话'}).waitFor();
+  check((await selected()).thread===fallback.id,'deleting_current_conversation_selects_remaining');
+  await page.locator('.thread-item.active').getByRole('button',{name:'删除对话',exact:true}).click();
+  await dialog.getByRole('button',{name:'确认删除',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await page.locator('.chat-empty').waitFor();
+  check((await selected()).thread===null && (await selected()).run===null,'deleting_last_conversation_resets_workspace');
+  check(await page.locator('.chat-message').count()===0,'old_messages_cleared');
+  await page.reload();await connected();
+  check(await page.locator('.thread-item').count()===0,'deletion_persists_after_reload');
+  await page.getByRole('button',{name:'新建研究',exact:true}).click();
+  await page.getByRole('textbox',{name:'研究标题',exact:true}).fill('删除后仍可创建新对话');
+  await page.getByRole('button',{name:'创建研究空间',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await page.locator('.thread-item.active').filter({hasText:'删除后仍可创建新对话'}).waitFor();
+  check(!!(await selected()).thread,'create_after_deleting_all');
+  await page.setViewportSize({width:390,height:844});
+  await page.getByRole('button',{name:'切换研究列表',exact:true}).click();
+  await page.locator('.thread-item.active').getByRole('button',{name:'删除对话',exact:true}).waitFor({state:'visible'});
+  check(await page.locator('.thread-item.active').getByRole('button',{name:'删除对话',exact:true}).isVisible(),'mobile_delete_accessible');
+  await page.screenshot({path:path.join(output,'thread-list-mobile.png')});
+  check(errors.length===0,'no_browser_errors');
+ }finally{
+  fs.writeFileSync(path.join(output,'thread-deletion-checks.json'),JSON.stringify({scope:'synthetic_thread_deletion',checks,errors},null,2));
+  await browser.close();
+ }
+})().catch(e=>{console.error(e);process.exitCode=1;});
