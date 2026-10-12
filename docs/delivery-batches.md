@@ -1,5 +1,7 @@
 # XBuddy 分批实施清单
 
+2026-10-12 更新：第七批的公开源码仓库、README、AI/验证/测试记录和提交入口已上传 [hhuynx/xbuddy](https://github.com/hhuynx/xbuddy)。按用户选择暂缓 Web 部署，必交的外部产品 URL 仍待完成；详细材料见 [提交说明](submission.md)。
+
 本清单拆分自 [完整实现方案](implementation-plan.md)，保持《13_投资XBuddy.md》的全部必需能力和交付物。原计划共 7 批，使用 Python 技术栈，按功能依赖和验收推进。第 1–6 批完成所列底座检查；用户试用暴露的基础交互和综合分析缺口在第 7 批前追加 A–C 修复，当前结果见 [核心修复记录](agent-core-readiness.md)。iFinD 和生产部署仍待验证。历史记录见 [第一批](batch1-readiness.md)、[第二批](batch2-readiness.md)、[第三批](batch3-readiness.md)、[第四批](batch4-readiness.md)、[第五批](batch5-readiness.md)、[第六批](batch6-readiness.md)。
 
 每批都应产出可运行成果、实际验收结果和已知问题，更新 AI 使用与验证记录。测试随功能实现完成，第 6 批集中做跨模块和异常场景验收。

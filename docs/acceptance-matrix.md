@@ -1,5 +1,7 @@
 # 第六批验收矩阵
 
+2026-10-12 交付更新：源码与材料已公开上传 [hhuynx/xbuddy](https://github.com/hhuynx/xbuddy)，本次 GitHub 文件树核验 117 个源码文件，未发现私有配置、数据库、缓存或本机验收产物。用户选择先完成 GitHub，外部 Web 产品部署暂缓。下表保留各批历史范围，最新入口与状态见 [提交说明](submission.md)。
+
 日期：2026-10-11。`tests/` 的模型、HTTP/MCP 响应全部是构造数据；`verify_batch6_live.py` 单独使用已配置的真实模型和扶摇。表中的通过仅指所列范围。
 
 用户实际试用后的核心缺口已在本轮实现并单独验收；原诊断保留在 [基础能力复核](agent-capability-review.md)，当前范围见 [核心修复记录](agent-core-readiness.md)。本表保留各批的历史证据，公网与最终交付仍待验证。

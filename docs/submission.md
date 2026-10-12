@@ -44,7 +44,7 @@ python scripts/audit_publication.py
 python scripts/audit_git_index.py
 ```
 
-自动测试使用构造模型与金融响应，不需要生产 API Key。PostgreSQL/Redis/独立 Worker 用例需按部署说明配置专用测试数据库，使用独立 QA schema/Stream，避免共用生产数据。GitHub Actions 配置包含一次性 PostgreSQL/Redis 和全量后端测试；实际远程结果以 [Actions](https://github.com/hhuynx/xbuddy/actions) 为准。
+自动测试使用构造模型与金融响应，不需要生产 API Key。PostgreSQL/Redis/独立 Worker 用例需按部署说明配置专用测试数据库，使用独立 QA schema/Stream，避免共用生产数据。GitHub Actions 使用一次性 PostgreSQL/Redis，全量后端测试 **248 passed（247.14 秒），无跳过项**；[实际远程记录](https://github.com/hhuynx/xbuddy/actions/runs/38193206612)。
 
 最近一次已配置真实模型验证使用全新构造财务样本：两次模型调用、三个小节、九段正文，引用与数值校验通过；没有读取历史研究或调用真实金融接口。此前真实扶摇验证与本次构造验证分别记录在验证日志，不能混为一次验收。
 
